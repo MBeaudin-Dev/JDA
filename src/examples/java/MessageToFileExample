@@ -1,0 +1,100 @@
+/*
+ * Copyright 2015 Austin Keener, Michael Ritter, Florian SpieÃŸ, and the JDA contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/*
+ * This code example is a modification of MessageLoggerExample.java that allows for message logging to a specified file
+ * This could be useful for moderation and archival purposes
+ */
+
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.GatewayIntent;
+
+import javax.annotation.Nonnull;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.EnumSet;
+
+import java.io.FileWriter;   // Import the FileWriter class
+
+public class MessageToFileExample extends ListenerAdapter
+{
+
+    public static void main(String[] args) throws IOException
+    {
+        
+        String token = new String(Files.readAllBytes(Paths.get(args[0])), StandardCharsets.UTF_8).trim(); //Login Token For discord api
+
+      
+        EnumSet<GatewayIntent> intents = EnumSet.of(
+            GatewayIntent.GUILD_MESSAGES, //Enables MessageReceivedEvent for guild (also known as servers)
+            GatewayIntent.DIRECT_MESSAGES, //Enables the event for private channels (also known as direct messages)
+            GatewayIntent.MESSAGE_CONTENT //Enables access to message.getContentRaw()
+        );
+
+        //Starting bot using the jda builder
+        try
+        {
+            JDA jda = JDABuilder.createLight(token, intents)
+                    //Adding all event listeners and session configuration
+                    .addEventListeners(new MessageToFileExample())
+                    .build();
+
+            jda.getRestPing().queue(ping ->
+                //Shows ping in milliseconds
+                System.out.println("Logged in with ping: " + ping)
+            );
+
+            
+            jda.awaitReady(); //Block the main thread until the jda instance is fully loaded
+        }
+        catch (InterruptedException Error) //Print error if awaitReady() is interupted
+        {
+            Error.printStackTrace(); 
+        }
+    }
+    
+    /**
+    *This method will write an incoming message to a file
+    *@param event this is the event that is triggered when the bot detects a message was sent
+    */
+    @Override
+    public void onMessageReceived(@Nonnull MessageReceivedEvent event)
+    {
+        Message message = event.getMessage(); //Gets message sent 
+        
+        String OutMessage = message.getContentDisplay(); //Converts message sent to a string
+        
+        double MessageTime = (System.currentTimeMillis()) / 1000; //Gets the current time in epochseconds
+
+        if (event.isFromGuild()) //Check if message is sent in a server
+        {
+            try {
+                FileWriter MyFile = new FileWriter("LogFile.txt"); //Creates a new file writer object
+                MyFile.write(OutMessage + " At: " + MessageTime); //Writes to the file
+                MyFile.close(); //Closes the file
+
+            } catch (IOException Error) { //If there is an error logging message
+                Error.printStackTrace(); //Print Error
+            }
+        }
+    }
+}
